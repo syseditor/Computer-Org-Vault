@@ -3,6 +3,7 @@
 # to print the contents of a vector of words to the console.
 
 # Also using the swap procedure, it swaps 2 of the array's values.
+# Main purpose of the program is to implement the Quick Sort algorithm for a specific array.
 
 .data
 # vector of 10 integers
@@ -40,19 +41,52 @@ end_loop:
     jr $ra                    # return to caller
     
 swap:
-    la $t0, intarray
-    
-    sll $t1, $a0, 2
-    sll $t2, $a1, 2
-	
-    add $t3, $t1, $t0 
-    add $t4, $t2, $t0
-    lw $t5, 0($t4)
-    lw $t6, 0($t3)
+    lw $s1, 0($a0)
+    lw $s2, 0($a1)
     	
-    sw $t6, 0($t4)
-    sw $t5, 0($t3)
+    sw $s2, 0($a0)
+    sw $s1, 0($a1)
     jr $ra
+
+partition:
+    move $t5, $ra #current return address
+    move $t6, $a0 #left
+    move $t7, $a1 #right
+    
+    sub $t0, $t7, $t6
+    srl $t0, $t0, 3 #half the size of the array basically
+    sll $t0, $t0, 2 #fixes the pointer position, it gives the correct offset (multiple of 4)
+    add $t0, $t6, $t0 #pivot
+    lw $t1, 0($t0) #pval
+partition_loop:
+    sle $t2, $t6, $t7
+    beq $t2, $zero, exit_partition_loop
+left_loop:
+    lw $t3, 0($t6) #*left (changing)
+    slt $t2, $t3, $t1
+    beq $t2, $zero, right_loop
+    addi $t6, $t6, 4
+    j left_loop
+right_loop:
+    lw $t4, 0($t7) #*right (changing)
+    slt $t2, $t1, $t4
+    beq $t2, $zero, exit_right_loop
+    addi $t7, $t7, -4
+    j right_loop
+exit_right_loop:
+    slt $t2, $t6, $t7 #if (left <= right)
+    beq $t2, $zero, exit_partition_loop
+    
+    move $a0, $t6
+    move $a1, $t7
+    jal swap #swap(left, right)
+    
+    addi $t6, $t6, 4
+    addi $t7, $t7, -4
+    j partition_loop
+exit_partition_loop:
+    move $v0, $t6
+    jr $t5
 
 # main function
 main:
@@ -65,10 +99,17 @@ main:
     la $a0, intarray         # load address of string array
     li $a1, 10               # number of elements in array
     jal printvector          # call printvector function
-
-    li $a0, 0
-    li $a1, 9
-    jal swap
+    
+    li $t0, 0
+    li $t1, 9
+    la $t2, intarray
+    
+    sll $t0, $t0, 2
+    sll $t1, $t1, 2
+	
+    add $a0, $t0, $t2 
+    add $a1, $t1, $t2
+    jal partition
     
     la $a0, intarray
     li $a1, 10
